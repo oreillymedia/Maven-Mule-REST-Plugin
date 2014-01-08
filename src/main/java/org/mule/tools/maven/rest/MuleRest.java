@@ -57,6 +57,13 @@ public class MuleRest {
         //TODO: change this to be an option or only get applies is hostname is an ip
         TLSClientParameters params = new TLSClientParameters();
         params.setDisableCNCheck(true);
+        params.setTrustManagers(new TrustManager[] {
+                new X509TrustManager(){
+
+                    public X509Certificate[] getAcceptedIssuers(){return null;}
+                    public void checkClientTrusted(X509Certificate[] certs, String authType){}
+                    public void checkServerTrusted(X509Certificate[] certs, String authType){}
+                }});
         WebClient.getConfig(webClient)
                 .getHttpConduit().setTlsClientParameters(params);
 
