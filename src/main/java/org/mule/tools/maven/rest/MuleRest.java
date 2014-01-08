@@ -6,20 +6,25 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringWriter;
 import java.net.URL;
+import java.security.cert.X509Certificate;
 import java.util.Arrays;
 import java.util.Set;
 import java.util.TreeSet;
 
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 import javax.ws.rs.core.Response.Status;
 
+import org.apache.cxf.configuration.jsse.TLSClientParameters;
 import org.apache.cxf.helpers.IOUtils;
 import org.apache.cxf.jaxrs.client.WebClient;
 import org.apache.cxf.jaxrs.ext.multipart.Attachment;
 import org.apache.cxf.jaxrs.ext.multipart.AttachmentBuilder;
 import org.apache.cxf.jaxrs.ext.multipart.ContentDisposition;
 import org.apache.cxf.jaxrs.ext.multipart.MultipartBody;
+import org.apache.cxf.transport.http.HTTPConduit;
 import org.apache.cxf.transport.http.HTTPException;
 import org.codehaus.jackson.JsonFactory;
 import org.codehaus.jackson.JsonGenerator;
@@ -44,11 +49,36 @@ public class MuleRest {
     }
 
     private WebClient getWebClient(String... paths) {
-	WebClient webClient = WebClient.create(mmcUrl.toString(), username, password, null);
-	for (String path : paths) {
-	    webClient.path(path);
-	}
-	return webClient;
+
+        //hack so deploys can work with ips
+        //TODO: change this to be an option or only get applies is hostname is an ip
+        WebClient webClient = WebClient.create(mmcUrl.toString(), username, password, null);
+
+        HTTPConduit conduit = WebClient.getConfig(webClient)
+                .getHttpConduit();
+
+        TLSClientParameters params =
+                conduit.getTlsClientParameters();
+
+        if (params == null)
+        {
+            params = new TLSClientParameters();
+            conduit.setTlsClientParameters(params);
+        }
+
+        params.setTrustManagers(new TrustManager[] {
+                new X509TrustManager(){
+
+                    public X509Certificate[] getAcceptedIssuers(){return null;}
+                    public void checkClientTrusted(X509Certificate[] certs, String authType){}
+                    public void checkServerTrusted(X509Certificate[] certs, String authType){}
+                }});
+
+        params.setDisableCNCheck(true);
+        for (String path : paths) {
+            webClient.path(path);
+        }
+        return webClient;
     }
 
     private String processResponse(Response response) throws IOException {
