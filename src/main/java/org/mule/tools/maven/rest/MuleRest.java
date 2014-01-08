@@ -50,31 +50,12 @@ public class MuleRest {
 
     private WebClient getWebClient(String... paths) {
 
+        WebClient webClient = WebClient.create(mmcUrl.toString(), username, password, null);
         //hack so deploys can work with ips
         //TODO: change this to be an option or only get applies is hostname is an ip
-        WebClient webClient = WebClient.create(mmcUrl.toString(), username, password, null);
+        WebClient.getConfig(webClient)
+                .getHttpConduit().getTlsClientParameters().setDisableCNCheck(true);
 
-        HTTPConduit conduit = WebClient.getConfig(webClient)
-                .getHttpConduit();
-
-        TLSClientParameters params =
-                conduit.getTlsClientParameters();
-
-        if (params == null)
-        {
-            params = new TLSClientParameters();
-            conduit.setTlsClientParameters(params);
-        }
-
-        params.setTrustManagers(new TrustManager[] {
-                new X509TrustManager(){
-
-                    public X509Certificate[] getAcceptedIssuers(){return null;}
-                    public void checkClientTrusted(X509Certificate[] certs, String authType){}
-                    public void checkServerTrusted(X509Certificate[] certs, String authType){}
-                }});
-
-        params.setDisableCNCheck(true);
         for (String path : paths) {
             webClient.path(path);
         }
